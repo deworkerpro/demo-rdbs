@@ -14,9 +14,26 @@ $pdo = new PDO(
 );
 
 $stmt = $pdo->query(<<<'SQL'
-    SELECT CURRENT_TIMESTAMP as now
+    SELECT
+        u.id,
+        u.username,
+        (
+            SELECT json_agg(json_build_object('name', n.name, 'id', n.identity) ORDER BY n.name)
+            FROM networks n WHERE u.id = n.user_id
+        ) AS networks
+    FROM users u
+    ORDER BY u.username
     SQL);
 
 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 print_r($result);
+
+$parsed = array_map(
+    static fn (array $row) => array_replace($row, [
+        'networks' => json_decode($row['networks'] ?? '[]', true)
+    ]),
+    $result
+);
+
+print_r($parsed);
